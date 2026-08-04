@@ -173,9 +173,9 @@ function DroppableColumn({
             items={sortedJobs.map((job) => job._id)}
             strategy={verticalListSortingStrategy}
           >
-            {sortedJobs.map((job, key) => (
+            {sortedJobs.map((job) => (
               <SortableJobCard
-                key={key}
+                key={job._id}
                 job={{ ...job, columnId: job.columnId || column._id }}
                 columns={sortedColumns}
               />
@@ -391,14 +391,14 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
     >
       <div className="space-y-4">
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {sortedColumns.map((col, key) => {
-            const config = COLUMN_CONFIG[key] || {
+          {sortedColumns.map((col, index) => {
+            const config = COLUMN_CONFIG[index] || {
               color: "bg-cyan-500",
               icon: <Calendar className="h-4 w-4" />,
             }
             return (
               <DroppableColumn
-                key={key}
+                key={col._id}
                 column={col}
                 config={config}
                 boardId={board._id}

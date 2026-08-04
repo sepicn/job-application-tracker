@@ -154,9 +154,9 @@ export default function JobApplicationCard({
                     <>
                       {columns
                         .filter((c) => c._id !== job.columnId)
-                        .map((column, key) => (
+                        .map((column) => (
                           <DropdownMenuItem
-                            key={key}
+                            key={column._id}
                             onClick={() => handleMove(column._id)}
                           >
                             Move to {column.name}

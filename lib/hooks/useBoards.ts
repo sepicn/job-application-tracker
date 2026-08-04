@@ -1,5 +1,5 @@
 "use client"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Board, Column, JobAppication } from "../models/models.types"
 import { updateJobApplication } from "@/lib/actions/job-applications"
 import { deleteColumn as deleteColumnAction } from "@/lib/actions/columns"
@@ -9,12 +9,18 @@ export function useBoard(initialBoard?: Board | null) {
   const [columns, setColumns] = useState<Column[]>(initialBoard?.columns || [])
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (initialBoard) {
-      setBoard(initialBoard)
-      setColumns(initialBoard.columns || [])
-    }
-  }, [initialBoard])
+  //  The server re-renders this page after each mutation and hands down a new
+  //  board object. Adopting it during render rather than from an effect lets
+  //  React finish in a single pass, instead of painting the stale board and
+  //  then immediately re-rendering.
+  //  https://react.dev/learn/you-might-not-need-an-effect
+  const [seenBoard, setSeenBoard] = useState(initialBoard)
+
+  if (initialBoard && initialBoard !== seenBoard) {
+    setSeenBoard(initialBoard)
+    setBoard(initialBoard)
+    setColumns(initialBoard.columns || [])
+  }
 
   async function moveJob(
     jobApplicationId: string,

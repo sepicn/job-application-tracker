@@ -50,7 +50,6 @@ import { useState } from "react"
 
 interface KanbanBoardProps {
   board: Board
-  userId: string
 }
 
 interface ColConfig {
@@ -260,7 +259,7 @@ function SortableJobCard({
   )
 }
 
-export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
+export default function KanbanBoard({ board }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 
   const { columns, moveJob, deleteColumn } = useBoard(board)

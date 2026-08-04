@@ -45,6 +45,7 @@ export default function SignUp() {
         router.push("/dashboard")
       }
     } catch (err) {
+      console.error("Sign up failed", err)
       setError("An unexpected error occured")
     } finally {
       setLoading(false)

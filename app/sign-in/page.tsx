@@ -43,6 +43,7 @@ export default function SignIn() {
         router.push("/dashboard")
       }
     } catch (err) {
+      console.error("Sign in failed", err)
       setError("An unexpected error occured")
     } finally {
       setLoading(false)

@@ -21,6 +21,9 @@ export function useBoard(initialBoard?: Board | null) {
     newColumnId: string,
     newOrder: number,
   ) {
+    const previousColumns = columns
+
+    setError(null)
     setColumns((prev) => {
       const newColumns = prev.map((col) => ({
         ...col,
@@ -80,8 +83,21 @@ export function useBoard(initialBoard?: Board | null) {
         columnId: newColumnId,
         order: newOrder,
       })
+
+      //  The action reports refusals in its return value rather than by
+      //  throwing, so the catch below never sees them.
+      if (result.error) {
+        setColumns(previousColumns)
+        setError(result.error)
+        return { error: result.error }
+      }
+
+      return { success: true }
     } catch (err) {
       console.error("Error", err)
+      setColumns(previousColumns)
+      setError("Failed to move job application")
+      return { error: "Failed to move job application" }
     }
   }
 

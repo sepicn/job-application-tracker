@@ -1,8 +1,8 @@
-import connectDB from "../lib/db";
-import "@/lib/models";
-import { Board, Column, JobApplication } from "@/lib/models";
+import connectDB from "../lib/db"
+import "@/lib/models"
+import { Board, Column, JobApplication } from "@/lib/models"
 
-const USER_ID = "6a6ddd52fd3802ee2833928d";
+const USER_ID = "6a6ddd52fd3802ee2833928d"
 
 const SAMPLE_JOBS = [
   // Wish List
@@ -147,65 +147,65 @@ const SAMPLE_JOBS = [
     jobUrl: "https://example.com/jobs/15",
     salary: "$85k - $100k",
   },
-];
+]
 
 async function seed() {
   if (!USER_ID) {
-    console.error("❌ Error: SEED_USER_ID environment variable is required");
-    console.log("Usage: SEED_USER_ID=your-user-id npm run seed");
-    process.exit(1);
+    console.error("❌ Error: SEED_USER_ID environment variable is required")
+    console.log("Usage: SEED_USER_ID=your-user-id npm run seed")
+    process.exit(1)
   }
 
   try {
-    console.log("🌱 Starting seed process...");
-    console.log(`📋 Seeding data for user ID: ${USER_ID}`);
+    console.log("🌱 Starting seed process...")
+    console.log(`📋 Seeding data for user ID: ${USER_ID}`)
 
-    await connectDB();
-    console.log("✅ Connected to database");
+    await connectDB()
+    console.log("✅ Connected to database")
 
     // Find the user's board
-    let board = await Board.findOne({ userId: USER_ID, name: "Job Hunt" });
+    let board = await Board.findOne({ userId: USER_ID, name: "Job Hunt" })
 
     if (!board) {
-      console.log("⚠️  Board not found. Creating board...");
-      const { initializeUserBoard } = await import("../lib/init-user-board");
-      board = await initializeUserBoard(USER_ID);
-      console.log("✅ Board created");
+      console.log("⚠️  Board not found. Creating board...")
+      const { initializeUserBoard } = await import("../lib/init-user-board")
+      board = await initializeUserBoard(USER_ID)
+      console.log("✅ Board created")
     } else {
-      console.log("✅ Board found");
+      console.log("✅ Board found")
     }
 
     // Get all columns
     const columns = await Column.find({ boardId: board._id }).sort({
       order: 1,
-    });
-    console.log(`✅ Found ${columns.length} columns`);
+    })
+    console.log(`✅ Found ${columns.length} columns`)
 
     if (columns.length === 0) {
       console.error(
-        "❌ No columns found. Please ensure the board has default columns."
-      );
-      process.exit(1);
+        "❌ No columns found. Please ensure the board has default columns.",
+      )
+      process.exit(1)
     }
 
     // Map column names to column IDs
-    const columnMap: Record<string, string> = {};
+    const columnMap: Record<string, string> = {}
     columns.forEach((col) => {
-      columnMap[col.name] = col._id.toString();
-    });
+      columnMap[col.name] = col._id.toString()
+    })
 
     // Clear existing job applications for this user
-    const existingJobs = await JobApplication.find({ userId: USER_ID });
+    const existingJobs = await JobApplication.find({ userId: USER_ID })
     if (existingJobs.length > 0) {
       console.log(
-        `🗑️  Deleting ${existingJobs.length} existing job applications...`
-      );
-      await JobApplication.deleteMany({ userId: USER_ID });
+        `🗑️  Deleting ${existingJobs.length} existing job applications...`,
+      )
+      await JobApplication.deleteMany({ userId: USER_ID })
 
       // Clear job applications from columns
       for (const column of columns) {
-        column.jobApplications = [];
-        await column.save();
+        column.jobApplications = []
+        await column.save()
       }
     }
 
@@ -216,22 +216,22 @@ async function seed() {
       Interviewing: SAMPLE_JOBS.slice(7, 10),
       Offer: SAMPLE_JOBS.slice(10, 12),
       Rejected: SAMPLE_JOBS.slice(12, 15),
-    };
+    }
 
-    let totalCreated = 0;
+    let totalCreated = 0
 
     for (const [columnName, jobs] of Object.entries(jobsByColumn)) {
-      const columnId = columnMap[columnName];
+      const columnId = columnMap[columnName]
       if (!columnId) {
-        console.warn(`⚠️  Column "${columnName}" not found, skipping...`);
-        continue;
+        console.warn(`⚠️  Column "${columnName}" not found, skipping...`)
+        continue
       }
 
-      const column = columns.find((c) => c.name === columnName);
-      if (!column) continue;
+      const column = columns.find((c) => c.name === columnName)
+      if (!column) continue
 
       for (let i = 0; i < jobs.length; i++) {
-        const jobData = jobs[i];
+        const jobData = jobs[i]
         const jobApplication = await JobApplication.create({
           company: jobData.company,
           position: jobData.position,
@@ -245,26 +245,26 @@ async function seed() {
           userId: USER_ID,
           status: columnName.toLowerCase().replace(" ", "-"),
           order: i,
-        });
+        })
 
-        column.jobApplications.push(jobApplication._id);
-        totalCreated++;
+        column.jobApplications.push(jobApplication._id)
+        totalCreated++
       }
 
-      await column.save();
-      console.log(`✅ Added ${jobs.length} jobs to "${columnName}" column`);
+      await column.save()
+      console.log(`✅ Added ${jobs.length} jobs to "${columnName}" column`)
     }
 
-    console.log(`\n🎉 Seed completed successfully!`);
-    console.log(`📊 Created ${totalCreated} job applications`);
-    console.log(`📋 Board: ${board.name}`);
-    console.log(`👤 User ID: ${USER_ID}`);
+    console.log(`\n🎉 Seed completed successfully!`)
+    console.log(`📊 Created ${totalCreated} job applications`)
+    console.log(`📋 Board: ${board.name}`)
+    console.log(`👤 User ID: ${USER_ID}`)
 
-    process.exit(0);
+    process.exit(0)
   } catch (error) {
-    console.error("❌ Error seeding database:", error);
-    process.exit(1);
+    console.error("❌ Error seeding database:", error)
+    process.exit(1)
   }
 }
 
-seed();
+seed()

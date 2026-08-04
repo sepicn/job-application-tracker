@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "seed:jobs": "tsx --env-file=.env.local scripts/seed.ts"
   },
   "dependencies": {
@@ -37,6 +39,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "tsx": "^4.23.5",
     "typescript": "^5"

@@ -4,6 +4,7 @@ import connectDB from "@/lib/db"
 import { Board as BoardModel } from "@/lib/models"
 import type { Board } from "@/lib/models/models.types"
 import { redirect } from "next/navigation"
+import BoardSkeleton from "@/components/board-skeleton"
 import { Suspense } from "react"
 
 async function getBoard(userId: string) {
@@ -55,10 +56,12 @@ async function DashboardPage() {
   // Created by a Better Auth hook on sign-up; absent if that hook failed.
   if (!board) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto p-6">
-          <h1 className="text-3xl font-bold text-black">No board yet</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            No board yet
+          </h1>
+          <p className="text-muted-foreground">
             We could not find a board for your account. Try reloading the page,
             or sign out and back in to have it created.
           </p>
@@ -68,11 +71,13 @@ async function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <div className="container mx-auto p-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-black">{board.name}</h1>
-          <p className="text-gray-600">Track your job applications</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+            {board.name}
+          </h1>
+          <p className="text-muted-foreground">Track your job applications</p>
         </div>
         <KanbanBoard board={board} addedThisWeek={countAddedThisWeek(board)} />
       </div>
@@ -82,7 +87,19 @@ async function DashboardPage() {
 
 export default async function Dashboard() {
   return (
-    <Suspense fallback={<p>Loading...</p>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto p-6">
+            <div className="mb-6 space-y-2">
+              <div className="h-8 w-48 animate-pulse rounded bg-muted" />
+              <div className="h-5 w-64 animate-pulse rounded bg-muted" />
+            </div>
+            <BoardSkeleton />
+          </div>
+        </div>
+      }
+    >
       <DashboardPage />
     </Suspense>
   )

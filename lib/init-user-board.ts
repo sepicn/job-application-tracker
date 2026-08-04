@@ -1,4 +1,4 @@
-import connectDB from "./db";
+import connectDB from "./db"
 import { Board, Column } from "./models"
 
 const DEFAULT_COLUMNS = [
@@ -26,7 +26,6 @@ const DEFAULT_COLUMNS = [
 
 export async function initializeUserBoard(userId: string) {
   try {
-
     await connectDB()
 
     // If the board already exists with its columns
@@ -54,13 +53,14 @@ export async function initializeUserBoard(userId: string) {
           order: column.order,
           boardId: board._id,
           jobApplications: [],
-        })))
+        }),
+      ),
+    )
 
     board.columns = columns.map((col) => col._id)
     await board.save()
 
     return board
-
   } catch (err) {
     throw err
   }

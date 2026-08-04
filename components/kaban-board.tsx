@@ -182,8 +182,8 @@ function DroppableColumn({
           // A ring around the full min-height box read as an oversized
           // placeholder, so only empty columns, which have no gap, get one.
           className={`space-y-2 pt-4 min-h-100 rounded-b-lg transition-colors ${
-            isOver ? "bg-blue-50/60" : "bg-gray-50/50"
-          } ${isOver && sortedJobs.length === 0 ? "ring-2 ring-inset ring-blue-400" : ""}`}
+            isOver ? "bg-accent" : "bg-muted/40"
+          } ${isOver && sortedJobs.length === 0 ? "ring-2 ring-inset ring-primary" : ""}`}
         >
           <SortableContext
             items={sortedJobs.map((job) => job._id)}

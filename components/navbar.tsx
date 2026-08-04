@@ -19,7 +19,7 @@ export default function Navbar() {
   const { data: session } = useSession()
 
   return (
-    <nav className="border-b border-gray-200 bg-white">
+    <nav className="border-b bg-background">
       <div className="container mx-auto flex h-16 items-center px-4 justify-between">
         <Link
           href="/"
@@ -33,10 +33,7 @@ export default function Navbar() {
           {session?.user ? (
             <>
               <Link href="/dashboard">
-                <Button
-                  variant="ghost"
-                  className="text-gray-700 hover:text-black"
-                >
+                <Button variant="ghost" className="text-foreground">
                   Dashboard
                 </Button>
               </Link>
@@ -64,7 +61,9 @@ export default function Navbar() {
                         <p className="text-sm font-medium leading-none text-primary">
                           {session.user.name}
                         </p>
-                        <p className="text-xs leading-none text-muted-foreground">{session.user.email}</p>
+                        <p className="text-xs leading-none text-muted-foreground">
+                          {session.user.email}
+                        </p>
                       </div>
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
@@ -76,10 +75,7 @@ export default function Navbar() {
           ) : (
             <>
               <Link href="/sign-in">
-                <Button
-                  variant="ghost"
-                  className="text-gray-700 hover:text-black"
-                >
+                <Button variant="ghost" className="text-foreground">
                   Log in
                 </Button>
               </Link>

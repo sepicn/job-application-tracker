@@ -26,12 +26,12 @@ const ColumnSchema = new Schema<IColumn>(
       required: true,
       default: 0,
     },
-    jobApplications:[
+    jobApplications: [
       {
-        type:Schema.Types.ObjectId,
-        ref: "JobApplication"
-      }
-    ]
+        type: Schema.Types.ObjectId,
+        ref: "JobApplication",
+      },
+    ],
   },
   { timestamps: true },
 )

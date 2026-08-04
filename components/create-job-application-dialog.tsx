@@ -61,6 +61,7 @@ export default function CreateJobApplicationDialog({
         console.error("Failed to create job: ", result.error)
       }
     } catch (err) {
+      console.error(err)
     } finally {
     }
   }

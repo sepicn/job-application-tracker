@@ -44,7 +44,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 
 interface KanbanBoardProps {
@@ -139,7 +139,7 @@ function DroppableColumn({
 
   return (
     <>
-      <Card className="min-w-75 shrink-0 shadow-md p-0">
+      <Card className="min-w-75 max-w-md flex-1 shrink-0 p-0 shadow-md">
         <CardHeader
           className={`${config.header} text-white rounded-t-lg pb-3 pt-3`}
         >
@@ -341,6 +341,18 @@ export default function KanbanBoard({
     deleteColumn,
   } = useBoard(board)
 
+  // Marking the body rather than the overlay: the cursor also travels over the
+  // cards and columns underneath, which carry cursors of their own.
+  useEffect(() => {
+    if (!activeId) return
+
+    document.body.dataset.dragging = "true"
+
+    return () => {
+      delete document.body.dataset.dragging
+    }
+  }, [activeId])
+
   const sortedColumns = [...(columns ?? [])].sort((a, b) => a.order - b.order)
 
   const sensors = useSensors(
@@ -475,7 +487,7 @@ export default function KanbanBoard({
     >
       <div className="space-y-4">
         <BoardStats columns={columns} addedThisWeek={addedThisWeek} />
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="scrollbar-board flex gap-4 overflow-x-auto pb-4">
           {sortedColumns.map((col, index) => {
             return (
               <DroppableColumn

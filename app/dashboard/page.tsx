@@ -57,7 +57,7 @@ async function DashboardPage() {
   if (!board) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto p-6">
+        <div className="p-6">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             No board yet
           </h1>
@@ -72,7 +72,7 @@ async function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto p-6">
+      <div className="p-6">
         <div className="mb-6">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">
             {board.name}
@@ -90,7 +90,7 @@ export default async function Dashboard() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto p-6">
+          <div className="p-6">
             <div className="mb-6 space-y-2">
               <div className="h-8 w-48 animate-pulse rounded bg-muted" />
               <div className="h-5 w-64 animate-pulse rounded bg-muted" />

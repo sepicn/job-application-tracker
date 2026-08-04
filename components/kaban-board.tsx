@@ -107,8 +107,11 @@ function DroppableColumn({
     },
   })
 
-  const sortedJobs =
-    column.jobApplications?.sort((a, b) => a.order - b.order) || []
+  //  Array.sort mutates in place, so copy first: sorting column.jobApplications
+  //  directly would reorder the caller's props during render.
+  const sortedJobs = [...(column.jobApplications ?? [])].sort(
+    (a, b) => a.order - b.order,
+  )
 
   async function handleDelete() {
     setIsDeleting(true)
@@ -262,7 +265,9 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
 
   const { columns, moveJob, deleteColumn } = useBoard(board)
 
-  const sortedColumns = columns?.sort((a, b) => a.order - b.order) || []
+  //  Same reason as in DroppableColumn: sorting `columns` in place mutates the
+  //  array held in useBoard state.
+  const sortedColumns = [...(columns ?? [])].sort((a, b) => a.order - b.order)
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -291,8 +296,9 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
     let sourceIndex = -1
 
     for (const column of sortedColumns) {
-      const jobs =
-        column.jobApplications.sort((a, b) => a.order - b.order) || []
+      const jobs = [...(column.jobApplications ?? [])].sort(
+        (a, b) => a.order - b.order,
+      )
       const jobIndex = jobs.findIndex((j) => j._id === activeId)
 
       if (jobIndex !== -1) {
@@ -334,11 +340,13 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
 
       if (!targetColumnObj) return
 
-      const allJobsInTargetOriginal =
-        targetColumnObj.jobApplications.sort((a, b) => a.order - b.order) || []
+      const allJobsInTargetOriginal = [
+        ...(targetColumnObj.jobApplications ?? []),
+      ].sort((a, b) => a.order - b.order)
 
-      const allJobsInTargetFiltered =
-        allJobsInTargetOriginal.filter((job) => job._id !== activeId) || []
+      const allJobsInTargetFiltered = allJobsInTargetOriginal.filter(
+        (job) => job._id !== activeId,
+      )
 
       const targetIndexInOriginal = allJobsInTargetOriginal.findIndex(
         (job) => job._id === overId,
@@ -383,7 +391,7 @@ export default function KanbanBoard({ board, userId }: KanbanBoardProps) {
     >
       <div className="space-y-4">
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {columns.map((col, key) => {
+          {sortedColumns.map((col, key) => {
             const config = COLUMN_CONFIG[key] || {
               color: "bg-cyan-500",
               icon: <Calendar className="h-4 w-4" />,

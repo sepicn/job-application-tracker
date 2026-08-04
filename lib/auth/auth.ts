@@ -4,6 +4,7 @@ import { MongoClient } from "mongodb"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { initializeUserBoard } from "../init-user-board"
+import { env } from "../env"
 
 // In dev, Next re-evaluates this module on every hot reload. Without caching,
 // each reload opens a new connection pool and never closes the old one, which
@@ -13,8 +14,7 @@ declare global {
 }
 
 const client =
-  global._mongoClient ??
-  new MongoClient(process.env.MONGODB_URI!, { maxPoolSize: 10 })
+  global._mongoClient ?? new MongoClient(env.MONGODB_URI, { maxPoolSize: 10 })
 
 if (process.env.NODE_ENV !== "production") {
   global._mongoClient = client
@@ -24,15 +24,34 @@ const db = client.db()
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client }),
+  //  Rejects auth requests whose Origin header is not one of these, which is
+  //  what stops another site from driving sign-in against this backend.
+  trustedOrigins: [env.BETTER_AUTH_URL],
   session: {
     cookieCache: {
       enabled: true,
-      maxAge: 60 * 60
+      maxAge: 60 * 60,
     },
   },
 
   emailAndPassword: {
     enabled: true,
+    //  The sign-in form only sets minLength on the input, which any client can
+    //  ignore. This is the check that actually holds.
+    minPasswordLength: 8,
+    maxPasswordLength: 128,
+  },
+  rateLimit: {
+    //  Defaults to production-only; enable everywhere so the limits are
+    //  exercised in development too.
+    enabled: true,
+    window: 60,
+    max: 100,
+    storage: "database",
+    customRules: {
+      "/sign-in/email": { window: 60, max: 5 },
+      "/sign-up/email": { window: 60 * 60, max: 5 },
+    },
   },
   databaseHooks: {
     user: {
@@ -41,15 +60,15 @@ export const auth = betterAuth({
           if (user.id) {
             await initializeUserBoard(user.id)
           }
-        }
-      }
-    }
-  }
+        },
+      },
+    },
+  },
 })
 
 export async function getSession() {
   const result = await auth.api.getSession({
-    headers: await headers()
+    headers: await headers(),
   })
 
   return result
@@ -57,9 +76,8 @@ export async function getSession() {
 
 export async function signOut() {
   const result = await auth.api.signOut({
-    headers: await headers()
+    headers: await headers(),
   })
-
 
   if (result.success) {
     redirect("/sign-in")

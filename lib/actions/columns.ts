@@ -4,6 +4,7 @@ import { getSession } from "../auth/auth"
 import connectDB from "../db"
 import { Board, Column, JobApplication } from "../models"
 import { revalidatePath } from "next/cache"
+import { objectIdSchema } from "../validation/job-applications"
 
 export async function deleteColumn(id: string) {
   const session = await getSession()
@@ -14,7 +15,13 @@ export async function deleteColumn(id: string) {
 
   await connectDB()
 
-  const column = await Column.findById(id)
+  const parsedId = objectIdSchema.safeParse(id)
+
+  if (!parsedId.success) {
+    return { error: "Invalid column id" }
+  }
+
+  const column = await Column.findById(parsedId.data)
 
   if (!column) {
     return { error: "Column not found" }

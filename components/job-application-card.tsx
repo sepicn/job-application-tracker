@@ -1,7 +1,7 @@
 "use client"
 import { Column, JobAppication } from "@/lib/models/models.types"
 import { Card, CardContent } from "./ui/card"
-import { Edit2, ExternalLink, MoreVertical,  Trash2 } from "lucide-react"
+import { Edit2, ExternalLink, MoreVertical, Trash2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,7 +35,7 @@ interface JobAppicationCardProps {
 export default function JobApplicationCard({
   job,
   columns,
-  dragHandleProps
+  dragHandleProps,
 }: JobAppicationCardProps) {
   const [isEditing, setIsEditing] = useState(false)
 
@@ -98,7 +98,10 @@ export default function JobApplicationCard({
 
   return (
     <>
-      <Card className="cursor-pointer transition-shadow hover:shadow-accent" {...dragHandleProps} >
+      <Card
+        className="cursor-pointer transition-shadow hover:shadow-accent"
+        {...dragHandleProps}
+      >
         <CardContent className="p-4">
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 min-w-0">
@@ -126,6 +129,7 @@ export default function JobApplicationCard({
               {job.jobUrl && (
                 <a
                   target="_blank"
+                  rel="noopener noreferrer"
                   href={job.jobUrl}
                   onClick={(e) => e.stopPropagation()}
                   className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"

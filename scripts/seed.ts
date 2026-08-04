@@ -3,8 +3,7 @@ import connectDB from "../lib/db"
 import "@/lib/models"
 import { Board, Column, JobApplication } from "@/lib/models"
 
-// Better Auth stores accounts in the `user` collection and exposes _id as the
-// user id, so an email is enough to find what the board is keyed by.
+// Better Auth exposes the `user` collection's _id as the id boards key off.
 async function resolveUserId() {
   const explicit = process.env.SEED_USER_ID
 
@@ -184,15 +183,12 @@ async function seed() {
 
     if (!USER_ID) {
       console.error("❌ Pass SEED_USER_EMAIL or SEED_USER_ID")
-      console.log(
-        'Usage: SEED_USER_EMAIL="you@example.com" npm run seed:jobs',
-      )
+      console.log('Usage: SEED_USER_EMAIL="you@example.com" npm run seed:jobs')
       process.exit(1)
     }
 
     console.log(`📋 Seeding data for user ID: ${USER_ID}`)
 
-    // Find the user's board
     let board = await Board.findOne({ userId: USER_ID, name: "Job Hunt" })
 
     if (!board) {
@@ -204,7 +200,6 @@ async function seed() {
       console.log("✅ Board found")
     }
 
-    // Get all columns
     const columns = await Column.find({ boardId: board._id }).sort({
       order: 1,
     })
@@ -217,7 +212,6 @@ async function seed() {
       process.exit(1)
     }
 
-    // Map column names to column IDs
     const columnMap: Record<string, string> = {}
     columns.forEach((col) => {
       columnMap[col.name] = col._id.toString()
@@ -231,14 +225,12 @@ async function seed() {
       )
       await JobApplication.deleteMany({ userId: USER_ID })
 
-      // Clear job applications from columns
       for (const column of columns) {
         column.jobApplications = []
         await column.save()
       }
     }
 
-    // Distribute jobs across columns
     const jobsByColumn: Record<string, typeof SAMPLE_JOBS> = {
       "Wish List": SAMPLE_JOBS.slice(0, 3),
       Applied: SAMPLE_JOBS.slice(3, 7),

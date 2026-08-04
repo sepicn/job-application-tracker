@@ -1,6 +1,10 @@
 import { z } from "zod"
 
 // Parsed at import time so a bad deployment fails here, not on the first query.
+// A blank variable means unconfigured, so it must reach the schema as undefined.
+const blankAsMissing = <T extends z.ZodType>(schema: T) =>
+  z.preprocess((value) => (value === "" ? undefined : value), schema)
+
 const envSchema = z.object({
   MONGODB_URI: z
     .string()
@@ -18,9 +22,17 @@ const envSchema = z.object({
   NEXT_PUBLIC_BETTER_AUTH_URL: z.url(
     "NEXT_PUBLIC_BETTER_AUTH_URL must be a valid URL",
   ),
-  // Optional: Google sign-in stays switched off until both are supplied.
-  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
-  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  // Absent means every mail-dependent flow stays off. Any SMTP provider
+  // works; Gmail wants an app password, not the account password.
+  SMTP_HOST: blankAsMissing(z.string().min(1).optional()),
+  SMTP_PORT: blankAsMissing(
+    z.coerce.number().int().min(1).max(65535).default(465),
+  ),
+  SMTP_USER: blankAsMissing(z.string().min(1).optional()),
+  SMTP_PASSWORD: blankAsMissing(z.string().min(1).optional()),
+  EMAIL_FROM: blankAsMissing(z.string().min(1).optional()),
+  GOOGLE_CLIENT_ID: blankAsMissing(z.string().min(1).optional()),
+  GOOGLE_CLIENT_SECRET: blankAsMissing(z.string().min(1).optional()),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -40,4 +52,8 @@ export const env = parsed.data
 
 export const isGoogleAuthEnabled = Boolean(
   env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
+)
+
+export const isEmailEnabled = Boolean(
+  env.SMTP_HOST && env.SMTP_USER && env.SMTP_PASSWORD && env.EMAIL_FROM,
 )

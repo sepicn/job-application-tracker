@@ -4,7 +4,12 @@ import { MongoClient } from "mongodb"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { initializeUserBoard } from "../init-user-board"
-import { env, isGoogleAuthEnabled } from "../env"
+import { env, isEmailEnabled, isGoogleAuthEnabled } from "../env"
+import {
+  sendEmailChangeConfirmation,
+  sendPasswordResetEmail,
+  sendVerificationEmail,
+} from "../email"
 
 // In dev, Next re-evaluates this module on every hot reload. Without caching,
 // each reload opens a new connection pool and never closes the old one, which
@@ -35,27 +40,26 @@ export const auth = betterAuth({
   account: {
     accountLinking: {
       enabled: true,
-      // Google verifies email ownership, so its claim is proof enough to link
-      // a social identity onto an existing row.
+      // Google proves email ownership, so its claim is enough to link on.
       trustedProviders: ["google"],
-      // Normally the local row must be emailVerified first. Nothing here
-      // verifies emails, so linking would always be refused. The gate exists to
-      // stop someone pre-registering an unverified account on a victim's
-      // address and inheriting their Google identity; email verification is the
-      // real fix, and this stays off until there is a mail provider.
-      requireLocalEmailVerified: false,
+      // Stops someone pre-registering on a victim's address and inheriting
+      // their Google identity. Only enforceable once sign-ups get verified.
+      requireLocalEmailVerified: isEmailEnabled,
     },
   },
   user: {
     changeEmail: {
       enabled: true,
-      // No mail provider is configured, so confirmation cannot be sent. Users
-      // are never verified here, which is the case this flag covers.
-      updateEmailWithoutVerification: true,
+      updateEmailWithoutVerification: !isEmailEnabled,
+      sendChangeEmailConfirmation: isEmailEnabled
+        ? async ({ newEmail, url }) => {
+            await sendEmailChangeConfirmation(newEmail, url)
+          }
+        : undefined,
     },
   },
-  // Spread rather than an inline false: Better Auth reads the presence of the
-  // key, so an unconfigured provider must be absent, not disabled.
+  // Better Auth reads the key's presence, so an unused provider must be
+  // absent rather than disabled.
   socialProviders: isGoogleAuthEnabled
     ? {
         google: {
@@ -69,6 +73,21 @@ export const auth = betterAuth({
     // The form's minLength is advisory; this is the enforced one.
     minPasswordLength: 8,
     maxPasswordLength: 128,
+    requireEmailVerification: isEmailEnabled,
+    sendResetPassword: isEmailEnabled
+      ? async ({ user, url }) => {
+          await sendPasswordResetEmail(user.email, url)
+        }
+      : undefined,
+  },
+  emailVerification: {
+    sendVerificationEmail: isEmailEnabled
+      ? async ({ user, url }) => {
+          await sendVerificationEmail(user.email, url)
+        }
+      : undefined,
+    sendOnSignUp: isEmailEnabled,
+    autoSignInAfterVerification: true,
   },
   rateLimit: {
     // Better Auth enables this in production only by default.

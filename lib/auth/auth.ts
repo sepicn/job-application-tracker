@@ -32,6 +32,20 @@ export const auth = betterAuth({
     },
   },
 
+  account: {
+    accountLinking: {
+      enabled: true,
+      // Google verifies email ownership, so its claim is proof enough to link
+      // a social identity onto an existing row.
+      trustedProviders: ["google"],
+      // Normally the local row must be emailVerified first. Nothing here
+      // verifies emails, so linking would always be refused. The gate exists to
+      // stop someone pre-registering an unverified account on a victim's
+      // address and inheriting their Google identity; email verification is the
+      // real fix, and this stays off until there is a mail provider.
+      requireLocalEmailVerified: false,
+    },
+  },
   user: {
     changeEmail: {
       enabled: true,

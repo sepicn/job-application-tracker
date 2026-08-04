@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
-import { Avatar, AvatarFallback } from "./ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import SignOutButton from "./sign-out-btn"
 import ThemeToggle from "./theme-toggle"
 import { useSession } from "@/lib/auth/auth-client"
@@ -51,6 +51,13 @@ export default function Navbar() {
                   }
                 >
                   <Avatar className="h-8 w-8">
+                    {session.user.image && (
+                      <AvatarImage
+                        src={session.user.image}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       {session.user.name[0].toUpperCase()}
                     </AvatarFallback>

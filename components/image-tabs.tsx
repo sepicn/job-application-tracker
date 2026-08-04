@@ -8,10 +8,10 @@ const TABS = [
   {
     id: "organize",
     label: "Organize Applications",
-    src: "/hero-images/hero1.png",
+    src: "/hero-images/hero1.webp",
   },
-  { id: "hired", label: "Get Hired", src: "/hero-images/hero2.png" },
-  { id: "boards", label: "Manage Boards", src: "/hero-images/hero3.png" },
+  { id: "hired", label: "Get Hired", src: "/hero-images/hero2.webp" },
+  { id: "boards", label: "Manage Boards", src: "/hero-images/hero3.webp" },
 ]
 
 export default function ImageTabs() {

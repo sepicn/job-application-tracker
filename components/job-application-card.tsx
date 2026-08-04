@@ -208,15 +208,16 @@ export default function JobApplicationCard({
                 <DropdownMenuTrigger
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="-mt-1 -mr-1 h-7 w-7 shrink-0 text-muted-foreground"
+                      aria-label="Move this application"
+                    />
+                  }
                 >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="-mt-1 -mr-1 h-7 w-7 shrink-0 text-muted-foreground"
-                    aria-label="Move this application"
-                  >
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
+                  <MoreVertical className="h-4 w-4" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   {moveTargets.map((column) => (

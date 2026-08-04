@@ -1,8 +1,32 @@
+import mongoose from "mongoose"
 import connectDB from "../lib/db"
 import "@/lib/models"
 import { Board, Column, JobApplication } from "@/lib/models"
 
-const USER_ID = "6a6ddd52fd3802ee2833928d"
+// Better Auth stores accounts in the `user` collection and exposes _id as the
+// user id, so an email is enough to find what the board is keyed by.
+async function resolveUserId() {
+  const explicit = process.env.SEED_USER_ID
+
+  if (explicit) return explicit
+
+  const email = process.env.SEED_USER_EMAIL
+
+  if (!email) return null
+
+  const user = await mongoose.connection
+    .collection("user")
+    .findOne({ email: email.toLowerCase() })
+
+  if (!user) {
+    console.error(`❌ No account found for ${email}`)
+    return null
+  }
+
+  console.log(`👤 Resolved ${email} to ${user._id.toString()}`)
+
+  return user._id.toString()
+}
 
 const SAMPLE_JOBS = [
   // Wish List
@@ -150,18 +174,23 @@ const SAMPLE_JOBS = [
 ]
 
 async function seed() {
-  if (!USER_ID) {
-    console.error("❌ Error: SEED_USER_ID environment variable is required")
-    console.log("Usage: SEED_USER_ID=your-user-id npm run seed")
-    process.exit(1)
-  }
-
   try {
     console.log("🌱 Starting seed process...")
-    console.log(`📋 Seeding data for user ID: ${USER_ID}`)
 
     await connectDB()
     console.log("✅ Connected to database")
+
+    const USER_ID = await resolveUserId()
+
+    if (!USER_ID) {
+      console.error("❌ Pass SEED_USER_EMAIL or SEED_USER_ID")
+      console.log(
+        'Usage: SEED_USER_EMAIL="you@example.com" npm run seed:jobs',
+      )
+      process.exit(1)
+    }
+
+    console.log(`📋 Seeding data for user ID: ${USER_ID}`)
 
     // Find the user's board
     let board = await Board.findOne({ userId: USER_ID, name: "Job Hunt" })

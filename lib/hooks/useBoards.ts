@@ -4,6 +4,56 @@ import { Board, Column, JobAppication } from "../models/models.types"
 import { updateJobApplication } from "@/lib/actions/job-applications"
 import { deleteColumn as deleteColumnAction } from "@/lib/actions/columns"
 
+//  Removes the job from whichever column holds it and re-inserts it into the
+//  target at `targetIndex`, renumbering that column so `order` stays in step
+//  with the rendered sequence. Pure, so it can drive both the live drag preview
+//  and the persisted move.
+export function withJobMoved(
+  columns: Column[],
+  jobApplicationId: string,
+  targetColumnId: string,
+  targetIndex: number,
+): Column[] {
+  const next = columns.map((col) => ({
+    ...col,
+    jobApplications: [...col.jobApplications],
+  }))
+
+  let jobToMove: JobAppication | null = null
+
+  for (const col of next) {
+    const jobIndex = col.jobApplications.findIndex(
+      (job) => job._id === jobApplicationId,
+    )
+
+    if (jobIndex !== -1) {
+      jobToMove = col.jobApplications[jobIndex]
+      col.jobApplications.splice(jobIndex, 1)
+      break
+    }
+  }
+
+  const targetColumn = next.find((col) => col._id === targetColumnId)
+
+  if (!jobToMove || !targetColumn) return columns
+
+  const insertAt = Math.max(
+    0,
+    Math.min(targetIndex, targetColumn.jobApplications.length),
+  )
+
+  targetColumn.jobApplications.splice(insertAt, 0, {
+    ...jobToMove,
+    columnId: targetColumnId,
+  })
+
+  targetColumn.jobApplications = targetColumn.jobApplications.map(
+    (job, index) => ({ ...job, order: index * 100 }),
+  )
+
+  return next
+}
+
 export function useBoard(initialBoard?: Board | null) {
   const [board, setBoard] = useState<Board | null>(initialBoard || null)
   const [columns, setColumns] = useState<Column[]>(initialBoard?.columns || [])
@@ -22,67 +72,37 @@ export function useBoard(initialBoard?: Board | null) {
     setColumns(initialBoard.columns || [])
   }
 
-  async function moveJob(
+  //  Applies a move to local state only. Called repeatedly while a card is
+  //  dragged over another column, so the target column opens a gap for it.
+  function previewMoveJob(
     jobApplicationId: string,
     newColumnId: string,
     newOrder: number,
   ) {
-    const previousColumns = columns
+    setColumns((prev) =>
+      withJobMoved(prev, jobApplicationId, newColumnId, newOrder),
+    )
+  }
+
+  //  Puts the board back to a snapshot taken before a drag started.
+  function restoreColumns(snapshot: Column[]) {
+    setColumns(snapshot)
+  }
+
+  async function moveJob(
+    jobApplicationId: string,
+    newColumnId: string,
+    newOrder: number,
+    //  During a drag, `columns` already holds the preview, so the caller passes
+    //  the pre-drag snapshot to roll back to instead.
+    rollbackTo?: Column[],
+  ) {
+    const previousColumns = rollbackTo ?? columns
 
     setError(null)
-    setColumns((prev) => {
-      const newColumns = prev.map((col) => ({
-        ...col,
-        jobApplications: [...col.jobApplications],
-      }))
-
-      //  Find and remove job from the old column
-
-      let jobToMove: JobAppication | null = null
-      let oldColumnId: string | null = null
-
-      for (const col of newColumns) {
-        const jobIndex = col.jobApplications.findIndex(
-          (job) => job._id === jobApplicationId,
-        )
-        if (jobIndex !== -1 && jobIndex !== undefined) {
-          jobToMove = col.jobApplications[jobIndex]
-          oldColumnId = col._id
-          col.jobApplications = col.jobApplications.filter(
-            (job) => job._id !== jobApplicationId,
-          )
-          break
-        }
-      }
-      if (jobToMove && oldColumnId) {
-        const targetColumnIndex = newColumns.findIndex(
-          (col) => col._id === newColumnId,
-        )
-        if (targetColumnIndex !== -1) {
-          const targetColumn = newColumns[targetColumnIndex]
-          const currentJobs = targetColumn.jobApplications || []
-
-          const updatedJobs = [...currentJobs]
-
-          updatedJobs.splice(newOrder, 0, {
-            ...jobToMove,
-            columnId: newColumnId,
-            order: newOrder * 100,
-          })
-
-          const jobsWithUpdatedOrders = updatedJobs.map((job, index) => ({
-            ...job,
-            order: index * 100,
-          }))
-
-          newColumns[targetColumnIndex] = {
-            ...targetColumn,
-            jobApplications: jobsWithUpdatedOrders,
-          }
-        }
-      }
-      return newColumns
-    })
+    setColumns((prev) =>
+      withJobMoved(prev, jobApplicationId, newColumnId, newOrder),
+    )
 
     try {
       const result = await updateJobApplication(jobApplicationId, {
@@ -131,5 +151,13 @@ export function useBoard(initialBoard?: Board | null) {
     }
   }
 
-  return { board, columns, error, moveJob, deleteColumn }
+  return {
+    board,
+    columns,
+    error,
+    moveJob,
+    previewMoveJob,
+    restoreColumns,
+    deleteColumn,
+  }
 }

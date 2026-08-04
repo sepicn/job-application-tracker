@@ -33,6 +33,7 @@ import {
   closestCorners,
   DndContext,
   DragEndEvent,
+  DragOverEvent,
   DragOverlay,
   DragStartEvent,
   PointerSensor,
@@ -46,7 +47,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-import { useState } from "react"
+import { useRef, useState } from "react"
 
 interface KanbanBoardProps {
   board: Board
@@ -166,7 +167,13 @@ function DroppableColumn({
         </CardHeader>
         <CardContent
           ref={setNodeRef}
-          className={`space-y-2 pt-4 bg-gray-50/50 min-h-100 rounded-b-lg ${isOver ? "ring-2 ring-blue-500" : ""}`}
+          //  The ring used to outline the whole 400px content box, so the empty
+          //  area below the cards looked like a second, oversized placeholder.
+          //  A tint says "droppable" without competing with the card-sized gap;
+          //  the ring is kept only for empty columns, which have no gap to show.
+          className={`space-y-2 pt-4 min-h-100 rounded-b-lg transition-colors ${
+            isOver ? "bg-blue-50/60" : "bg-gray-50/50"
+          } ${isOver && sortedJobs.length === 0 ? "ring-2 ring-inset ring-blue-400" : ""}`}
         >
           <SortableContext
             items={sortedJobs.map((job) => job._id)}
@@ -243,9 +250,16 @@ function SortableJobCard({
   })
 
   const style = {
-    transform: CSS.Transform.toString(transform),
+    //  Translate rather than Transform: the sorting strategy also returns
+    //  scaleX/scaleY, and applying those stretches the card while it shifts.
+    transform: CSS.Translate.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    //  A DragOverlay already draws this card under the cursor, and dnd-kit
+    //  deliberately leaves the source in place so its slot can act as the drop
+    //  placeholder (see shouldDisplaceDragSource in @dnd-kit/sortable). Dimming
+    //  it to 0.5 instead of hiding it showed both copies, which read as the
+    //  placeholder being two cards tall.
+    opacity: isDragging ? 0 : 1,
   }
 
   return (
@@ -261,8 +275,10 @@ function SortableJobCard({
 
 export default function KanbanBoard({ board }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
+  const dragSnapshot = useRef<Column[] | null>(null)
 
-  const { columns, moveJob, deleteColumn } = useBoard(board)
+  const { columns, moveJob, previewMoveJob, restoreColumns, deleteColumn } =
+    useBoard(board)
 
   //  Same reason as in DroppableColumn: sorting `columns` in place mutates the
   //  array held in useBoard state.
@@ -276,105 +292,106 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
     }),
   )
 
-  async function handleDragStart(event: DragStartEvent) {
-    setActiveId(event.active.id as string)
+  function columnHolding(cols: Column[], jobId: string) {
+    return cols.find((col) =>
+      col.jobApplications.some((job) => job._id === jobId),
+    )
+  }
+
+  function jobsOf(column: Column) {
+    return [...(column.jobApplications ?? [])].sort((a, b) => a.order - b.order)
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    //  Kept so the move can be undone if the drag is cancelled, and so a failed
+    //  save rolls back to where the card actually started rather than to the
+    //  last preview position.
+    dragSnapshot.current = columns
+    setActiveId(String(event.active.id))
+  }
+
+  //  Each column is its own SortableContext, and dnd-kit only shifts items
+  //  inside the context holding the dragged item. Moving the job into the
+  //  hovered column as it passes over is what makes that column open a gap.
+  function handleDragOver(event: DragOverEvent) {
+    const { active, over } = event
+
+    if (!over) return
+
+    const activeJobId = String(active.id)
+    const overId = String(over.id)
+
+    if (activeJobId === overId) return
+
+    const activeColumn = columnHolding(columns, activeJobId)
+    const overColumn =
+      columns.find((col) => col._id === overId) ??
+      columnHolding(columns, overId)
+
+    if (!activeColumn || !overColumn) return
+    //  Reordering within one column is already handled by its SortableContext.
+    if (activeColumn._id === overColumn._id) return
+
+    const overJobs = jobsOf(overColumn)
+    const overIndex = overJobs.findIndex((job) => job._id === overId)
+
+    previewMoveJob(
+      activeJobId,
+      overColumn._id,
+      overIndex === -1 ? overJobs.length : overIndex,
+    )
+  }
+
+  function handleDragCancel() {
+    setActiveId(null)
+
+    if (dragSnapshot.current) restoreColumns(dragSnapshot.current)
+
+    dragSnapshot.current = null
   }
 
   async function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event
+    const snapshot = dragSnapshot.current
 
     setActiveId(null)
+    dragSnapshot.current = null
 
-    if (!over) return
-
-    const activeId = active.id as string
-    const overId = over.id as string
-
-    let draggedJob: JobAppication | null = null
-    let sourceColumn: Column | null = null
-    let sourceIndex = -1
-
-    for (const column of sortedColumns) {
-      const jobs = [...(column.jobApplications ?? [])].sort(
-        (a, b) => a.order - b.order,
-      )
-      const jobIndex = jobs.findIndex((j) => j._id === activeId)
-
-      if (jobIndex !== -1) {
-        draggedJob = jobs[jobIndex]
-        sourceColumn = column
-        sourceIndex = jobIndex
-        break
-      }
-    }
-
-    if (!draggedJob || !sourceColumn) return
-
-    // Check if dropped in a column or another job
-    const targetColumn = sortedColumns.find((col) => col._id === overId)
-    const targetJob = sortedColumns
-      .flatMap((col) => col.jobApplications || [])
-      .find((job) => job._id === overId)
-
-    let targetColumnId: string
-    let newOrder: number
-
-    if (targetColumn) {
-      targetColumnId = targetColumn._id
-      const jobsInTarget =
-        targetColumn.jobApplications
-          .filter((job) => job._id !== activeId)
-          .sort((a, b) => a.order - b.order) || []
-      newOrder = jobsInTarget.length
-    } else if (targetJob) {
-      const targetJobColumn = sortedColumns.find((col) =>
-        col.jobApplications.some((job) => job._id === targetJob._id),
-      )
-      targetColumnId = targetJob.columnId || targetJobColumn?._id || ""
-      if (!targetColumnId) return
-
-      const targetColumnObj = sortedColumns.find(
-        (col) => col._id === targetColumnId,
-      )
-
-      if (!targetColumnObj) return
-
-      const allJobsInTargetOriginal = [
-        ...(targetColumnObj.jobApplications ?? []),
-      ].sort((a, b) => a.order - b.order)
-
-      const allJobsInTargetFiltered = allJobsInTargetOriginal.filter(
-        (job) => job._id !== activeId,
-      )
-
-      const targetIndexInOriginal = allJobsInTargetOriginal.findIndex(
-        (job) => job._id === overId,
-      )
-
-      const targetIndexInFiltered = allJobsInTargetFiltered.findIndex(
-        (job) => job._id === overId,
-      )
-
-      if (targetIndexInFiltered !== -1) {
-        if (sourceColumn._id === targetColumnId) {
-          if (sourceIndex < targetIndexInOriginal) {
-            newOrder = targetIndexInFiltered + 1
-          } else {
-            newOrder = targetIndexInFiltered
-          }
-        } else {
-          newOrder = targetIndexInFiltered
-        }
-      } else {
-        newOrder = allJobsInTargetFiltered.length
-      }
-    } else {
+    if (!over) {
+      if (snapshot) restoreColumns(snapshot)
       return
     }
 
-    if (!targetColumnId) return
+    const activeJobId = String(active.id)
+    const overId = String(over.id)
 
-    await moveJob(activeId, targetColumnId, newOrder)
+    //  handleDragOver has already moved the job into the hovered column, so the
+    //  destination is read from current state, not from where the drag began.
+    const column = columnHolding(columns, activeJobId)
+
+    if (!column) return
+
+    const jobs = jobsOf(column)
+    const oldIndex = jobs.findIndex((job) => job._id === activeJobId)
+    const newIndex =
+      overId === column._id
+        ? jobs.length - 1
+        : jobs.findIndex((job) => job._id === overId)
+
+    if (oldIndex === -1 || newIndex === -1) return
+
+    //  Picking a card up and dropping it back where it was should not write.
+    const origin = snapshot ? columnHolding(snapshot, activeJobId) : undefined
+    const originIndex = origin
+      ? jobsOf(origin).findIndex((job) => job._id === activeJobId)
+      : -1
+
+    if (origin?._id === column._id && originIndex === newIndex) {
+      if (snapshot) restoreColumns(snapshot)
+      return
+    }
+
+    await moveJob(activeJobId, column._id, newIndex, snapshot ?? undefined)
   }
 
   const activeJob = sortedColumns
@@ -386,7 +403,9 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       sensors={sensors}
       collisionDetection={closestCorners}
       onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="space-y-4">
         <div className="flex gap-4 overflow-x-auto pb-4">
@@ -411,7 +430,9 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       </div>
       <DragOverlay>
         {activeJob ? (
-          <div className="opacity-50">
+          //  Solid and lifted: this is the card in hand, the placeholder in the
+          //  list is what shows where it will land.
+          <div className="cursor-grabbing shadow-2xl rounded-xl">
             <JobApplicationCard job={activeJob} columns={sortedColumns} />
           </div>
         ) : null}

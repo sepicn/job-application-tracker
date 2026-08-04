@@ -120,9 +120,8 @@ export async function updateJobApplication(
 
   const { columnId, order, ...otherUpdates } = parsed.data
 
-  //  The job itself belongs to this user, but the destination column is
-  //  caller-supplied. Without this check a crafted request could push the job
-  //  into another user's column, where it would render on their board.
+  // The job is the caller's, but columnId is not: unchecked, a crafted
+  // request could move it onto someone else's board.
   if (columnId) {
     const targetColumn = await Column.findOne({
       _id: columnId,

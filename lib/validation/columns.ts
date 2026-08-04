@@ -1,8 +1,6 @@
 import { z } from "zod"
 import { objectIdSchema } from "./common"
 
-//  Column names are rendered in the board header, so cap them at a length that
-//  still fits the card rather than letting a paragraph through.
 const columnName = z
   .string()
   .trim()

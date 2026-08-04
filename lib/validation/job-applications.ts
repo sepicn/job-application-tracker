@@ -1,10 +1,7 @@
 import { z } from "zod"
 import { objectIdSchema } from "./common"
 
-const objectId = objectIdSchema
-
-//  Only http(s) may reach an href. Without this, a stored `javascript:` or
-//  `data:` URL becomes script execution for whoever clicks the card link.
+// These land in an href, so a stored javascript: URL would execute on click.
 const safeUrl = z
   .string()
   .trim()
@@ -18,8 +15,7 @@ const safeUrl = z
     }
   }, "Job URL must be a valid http(s) URL")
 
-//  Empty strings arrive from untouched form inputs; treat them as absent
-//  rather than validating them as URLs.
+// Untouched form inputs send "", which is absent rather than invalid.
 const optionalSafeUrl = z
   .union([z.literal(""), safeUrl])
   .optional()
@@ -39,8 +35,8 @@ export const createJobApplicationSchema = z.object({
   notes: optionalText(10_000),
   salary: optionalText(100),
   jobUrl: optionalSafeUrl,
-  columnId: objectId,
-  boardId: objectId,
+  columnId: objectIdSchema,
+  boardId: objectIdSchema,
   tags,
   description: optionalText(5_000),
 })
@@ -52,7 +48,7 @@ export const updateJobApplicationSchema = z.object({
   notes: optionalText(10_000),
   salary: optionalText(100),
   jobUrl: optionalSafeUrl,
-  columnId: objectId.optional(),
+  columnId: objectIdSchema.optional(),
   order: z.number().int().min(0).max(10_000).optional(),
   tags,
   description: optionalText(5_000),

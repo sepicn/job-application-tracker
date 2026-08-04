@@ -28,9 +28,22 @@ async function getBoard(userId: string) {
   return board
 }
 
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000
+
+// Counted here rather than in the client component: reading the clock during
+// render is impure, and server and browser clocks would disagree anyway.
+function countAddedThisWeek(board: Board) {
+  const cutoff = Date.now() - WEEK_MS
+
+  return board.columns
+    .flatMap((col) => col.jobApplications ?? [])
+    .filter(
+      (job) => job.createdAt && new Date(job.createdAt).getTime() >= cutoff,
+    ).length
+}
+
 async function DashboardPage() {
-  //  Resolve the session first: querying the board with an empty userId hits
-  //  the database on behalf of a request that is about to be redirected away.
+  // Before getBoard, which would otherwise query with an empty userId.
   const session = await getSession()
 
   if (!session?.user) {
@@ -39,8 +52,7 @@ async function DashboardPage() {
 
   const board = await getBoard(session.user.id)
 
-  //  The board is created by a Better Auth hook on sign-up. If that hook
-  //  failed, rendering board.name would throw, so say what happened instead.
+  // Created by a Better Auth hook on sign-up; absent if that hook failed.
   if (!board) {
     return (
       <div className="min-h-screen bg-white">
@@ -62,7 +74,7 @@ async function DashboardPage() {
           <h1 className="text-3xl font-bold text-black">{board.name}</h1>
           <p className="text-gray-600">Track your job applications</p>
         </div>
-        <KanbanBoard board={board} />
+        <KanbanBoard board={board} addedThisWeek={countAddedThisWeek(board)} />
       </div>
     </div>
   )

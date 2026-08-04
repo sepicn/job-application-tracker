@@ -12,8 +12,6 @@ import {
   renameColumnSchema,
 } from "../validation/columns"
 
-//  Board ownership is the only authorisation boundary here: a column is
-//  reachable exactly when the board it belongs to is the caller's.
 async function findOwnedColumn(id: string, userId: string) {
   const column = await Column.findById(id)
 
@@ -49,8 +47,7 @@ export async function createColumn(data: CreateColumnInput) {
     return { error: "Board not found" }
   }
 
-  //  Append to the end. deleteColumn renumbers on removal, so the count is the
-  //  next free position rather than something that can collide.
+  // Collision-free only because deleteColumn renumbers the survivors.
   const order = await Column.countDocuments({ boardId })
 
   const column = await Column.create({
@@ -116,7 +113,7 @@ export async function deleteColumn(id: string) {
 
   const { column } = owned
 
-  //  A board needs at least one column to stay usable
+  // A board with no columns has nowhere to put new applications.
   const columnCount = await Column.countDocuments({ boardId: column.boardId })
 
   if (columnCount <= 1) {
@@ -131,7 +128,6 @@ export async function deleteColumn(id: string) {
 
   await Column.findByIdAndDelete(id)
 
-  //  Close the gap in ordering left by the deleted column
   const remaining = await Column.find({ boardId: column.boardId })
     .sort({ order: 1 })
     .lean()

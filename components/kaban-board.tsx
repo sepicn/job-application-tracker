@@ -1,16 +1,7 @@
 "use client"
 
 import { Board, Column, JobAppication } from "@/lib/models/models.types"
-import {
-  Award,
-  Calendar,
-  CheckCircle2,
-  Mic,
-  MoreVertical,
-  Pencil,
-  Trash2,
-  XCircle,
-} from "lucide-react"
+import { MoreVertical, Pencil, Trash2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card"
 import {
   DropdownMenu,
@@ -29,6 +20,8 @@ import {
 import { Button } from "./ui/button"
 import CreateJobApplicationDialog from "./create-job-application-dialog"
 import CreateColumnDialog from "./create-column-dialog"
+import BoardStats from "./board-stats"
+import { ColConfig, columnConfigAt } from "./column-config"
 import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import JobApplicationCard from "./job-application-card"
@@ -56,35 +49,8 @@ import { toast } from "sonner"
 
 interface KanbanBoardProps {
   board: Board
+  addedThisWeek: number
 }
-
-interface ColConfig {
-  color: string
-  icon: React.ReactNode
-}
-
-const COLUMN_CONFIG: Array<ColConfig> = [
-  {
-    color: "bg-cyan-500",
-    icon: <Calendar className="h-4 w-4" />,
-  },
-  {
-    color: "bg-purple-500",
-    icon: <CheckCircle2 className="h-4 w-4" />,
-  },
-  {
-    color: "bg-green-500",
-    icon: <Mic className="h-4 w-4" />,
-  },
-  {
-    color: "bg-yellow-500",
-    icon: <Award className="h-4 w-4" />,
-  },
-  {
-    color: "bg-red-500",
-    icon: <XCircle className="h-4 w-4" />,
-  },
-]
 
 function DroppableColumn({
   column,
@@ -121,14 +87,12 @@ function DroppableColumn({
     },
   })
 
-  //  Array.sort mutates in place, so copy first: sorting column.jobApplications
-  //  directly would reorder the caller's props during render.
+  // sort() mutates, and this array is the caller's props.
   const sortedJobs = [...(column.jobApplications ?? [])].sort(
     (a, b) => a.order - b.order,
   )
 
   function openRename() {
-    //  Seed from the current name each time, so a cancelled edit is discarded.
     setRenameValue(column.name)
     setRenameError("")
     setIsRenaming(true)
@@ -177,7 +141,7 @@ function DroppableColumn({
     <>
       <Card className="min-w-75 shrink-0 shadow-md p-0">
         <CardHeader
-          className={`${config.color} text-white rounded-t-lg pb-3 pt-3`}
+          className={`${config.header} text-white rounded-t-lg pb-3 pt-3`}
         >
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -215,10 +179,8 @@ function DroppableColumn({
         </CardHeader>
         <CardContent
           ref={setNodeRef}
-          //  The ring used to outline the whole 400px content box, so the empty
-          //  area below the cards looked like a second, oversized placeholder.
-          //  A tint says "droppable" without competing with the card-sized gap;
-          //  the ring is kept only for empty columns, which have no gap to show.
+          // A ring around the full min-height box read as an oversized
+          // placeholder, so only empty columns, which have no gap, get one.
           className={`space-y-2 pt-4 min-h-100 rounded-b-lg transition-colors ${
             isOver ? "bg-blue-50/60" : "bg-gray-50/50"
           } ${isOver && sortedJobs.length === 0 ? "ring-2 ring-inset ring-blue-400" : ""}`}
@@ -343,15 +305,11 @@ function SortableJobCard({
   })
 
   const style = {
-    //  Translate rather than Transform: the sorting strategy also returns
-    //  scaleX/scaleY, and applying those stretches the card while it shifts.
+    // Translate, not Transform: the strategy's scale values stretch the card.
     transform: CSS.Translate.toString(transform),
     transition,
-    //  A DragOverlay already draws this card under the cursor, and dnd-kit
-    //  deliberately leaves the source in place so its slot can act as the drop
-    //  placeholder (see shouldDisplaceDragSource in @dnd-kit/sortable). Dimming
-    //  it to 0.5 instead of hiding it showed both copies, which read as the
-    //  placeholder being two cards tall.
+    // dnd-kit leaves the source in place when a DragOverlay is mounted, so
+    // its slot is the placeholder. Dimming rather than hiding showed both.
     opacity: isDragging ? 0 : 1,
   }
 
@@ -366,7 +324,10 @@ function SortableJobCard({
   )
 }
 
-export default function KanbanBoard({ board }: KanbanBoardProps) {
+export default function KanbanBoard({
+  board,
+  addedThisWeek,
+}: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const dragSnapshot = useRef<Column[] | null>(null)
 
@@ -380,8 +341,6 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
     deleteColumn,
   } = useBoard(board)
 
-  //  Same reason as in DroppableColumn: sorting `columns` in place mutates the
-  //  array held in useBoard state.
   const sortedColumns = [...(columns ?? [])].sort((a, b) => a.order - b.order)
 
   const sensors = useSensors(
@@ -403,16 +362,13 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
   }
 
   function handleDragStart(event: DragStartEvent) {
-    //  Kept so the move can be undone if the drag is cancelled, and so a failed
-    //  save rolls back to where the card actually started rather than to the
-    //  last preview position.
+    // Rollback target for a cancelled drag or a failed save.
     dragSnapshot.current = columns
     setActiveId(String(event.active.id))
   }
 
-  //  Each column is its own SortableContext, and dnd-kit only shifts items
-  //  inside the context holding the dragged item. Moving the job into the
-  //  hovered column as it passes over is what makes that column open a gap.
+  // dnd-kit only shifts items inside the SortableContext holding the dragged
+  // card, so it has to actually enter the hovered column to open a gap there.
   function handleDragOver(event: DragOverEvent) {
     const { active, over } = event
 
@@ -429,7 +385,7 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       columnHolding(columns, overId)
 
     if (!activeColumn || !overColumn) return
-    //  Reordering within one column is already handled by its SortableContext.
+    // Same-column reordering is already handled by the SortableContext.
     if (activeColumn._id === overColumn._id) return
 
     const overJobs = jobsOf(overColumn)
@@ -465,8 +421,7 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
     const activeJobId = String(active.id)
     const overId = String(over.id)
 
-    //  handleDragOver has already moved the job into the hovered column, so the
-    //  destination is read from current state, not from where the drag began.
+    // handleDragOver already moved the card, so read where it actually is.
     const column = columnHolding(columns, activeJobId)
 
     if (!column) return
@@ -480,7 +435,7 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
 
     if (oldIndex === -1 || newIndex === -1) return
 
-    //  Picking a card up and dropping it back where it was should not write.
+    // Dropping a card where it was picked up should not write.
     const origin = snapshot ? columnHolding(snapshot, activeJobId) : undefined
     const originIndex = origin
       ? jobsOf(origin).findIndex((job) => job._id === activeJobId)
@@ -498,8 +453,6 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       snapshot ?? undefined,
     )
 
-    //  The card has already snapped back at this point, which on its own looks
-    //  like the drag simply did not take.
     if (result.error) {
       toast.error("Could not move the application", {
         description: result.error,
@@ -521,17 +474,14 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       onDragCancel={handleDragCancel}
     >
       <div className="space-y-4">
+        <BoardStats columns={columns} addedThisWeek={addedThisWeek} />
         <div className="flex gap-4 overflow-x-auto pb-4">
           {sortedColumns.map((col, index) => {
-            const config = COLUMN_CONFIG[index] || {
-              color: "bg-cyan-500",
-              icon: <Calendar className="h-4 w-4" />,
-            }
             return (
               <DroppableColumn
                 key={col._id}
                 column={col}
-                config={config}
+                config={columnConfigAt(index)}
                 boardId={board._id}
                 sortedColumns={sortedColumns}
                 canDelete={columns.length > 1}
@@ -545,8 +495,6 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       </div>
       <DragOverlay>
         {activeJob ? (
-          //  Solid and lifted: this is the card in hand, the placeholder in the
-          //  list is what shows where it will land.
           <div className="cursor-grabbing shadow-2xl rounded-xl">
             <JobApplicationCard job={activeJob} columns={sortedColumns} />
           </div>

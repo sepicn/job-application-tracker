@@ -8,10 +8,7 @@ import {
   renameColumn as renameColumnAction,
 } from "@/lib/actions/columns"
 
-//  Removes the job from whichever column holds it and re-inserts it into the
-//  target at `targetIndex`, renumbering that column so `order` stays in step
-//  with the rendered sequence. Pure, so it can drive both the live drag preview
-//  and the persisted move.
+// Pure, so the drag preview and the persisted move stay in step.
 export function withJobMoved(
   columns: Column[],
   jobApplicationId: string,
@@ -58,8 +55,6 @@ export function withJobMoved(
   return next
 }
 
-//  Every mutation reports the same way, so callers can check `error` without
-//  narrowing a union per call site.
 export type BoardActionResult = { error?: string; success?: boolean }
 
 export function useBoard(initialBoard?: Board | null) {
@@ -67,11 +62,8 @@ export function useBoard(initialBoard?: Board | null) {
   const [columns, setColumns] = useState<Column[]>(initialBoard?.columns || [])
   const [error, setError] = useState<string | null>(null)
 
-  //  The server re-renders this page after each mutation and hands down a new
-  //  board object. Adopting it during render rather than from an effect lets
-  //  React finish in a single pass, instead of painting the stale board and
-  //  then immediately re-rendering.
-  //  https://react.dev/learn/you-might-not-need-an-effect
+  // Adopted during render, not in an effect, which would paint the stale
+  // board first and re-render immediately after.
   const [seenBoard, setSeenBoard] = useState(initialBoard)
 
   if (initialBoard && initialBoard !== seenBoard) {
@@ -80,8 +72,7 @@ export function useBoard(initialBoard?: Board | null) {
     setColumns(initialBoard.columns || [])
   }
 
-  //  Applies a move to local state only. Called repeatedly while a card is
-  //  dragged over another column, so the target column opens a gap for it.
+  // Local only: called on every pointer move across a column boundary.
   function previewMoveJob(
     jobApplicationId: string,
     newColumnId: string,
@@ -92,7 +83,6 @@ export function useBoard(initialBoard?: Board | null) {
     )
   }
 
-  //  Puts the board back to a snapshot taken before a drag started.
   function restoreColumns(snapshot: Column[]) {
     setColumns(snapshot)
   }
@@ -101,8 +91,7 @@ export function useBoard(initialBoard?: Board | null) {
     jobApplicationId: string,
     newColumnId: string,
     newOrder: number,
-    //  During a drag, `columns` already holds the preview, so the caller passes
-    //  the pre-drag snapshot to roll back to instead.
+    // `columns` holds the drag preview by now, so callers pass the real origin.
     rollbackTo?: Column[],
   ): Promise<BoardActionResult> {
     const previousColumns = rollbackTo ?? columns
@@ -118,8 +107,7 @@ export function useBoard(initialBoard?: Board | null) {
         order: newOrder,
       })
 
-      //  The action reports refusals in its return value rather than by
-      //  throwing, so the catch below never sees them.
+      // Refusals come back as a value, so the catch below never sees them.
       if (result.error) {
         setColumns(previousColumns)
         setError(result.error)
@@ -135,8 +123,7 @@ export function useBoard(initialBoard?: Board | null) {
     }
   }
 
-  //  Not optimistic: the column's _id is generated server-side and every child
-  //  keys off it, so there is nothing meaningful to render until it comes back.
+  // Not optimistic: the server generates the _id everything else keys off.
   async function createColumn(name: string): Promise<BoardActionResult> {
     if (!board?._id) return { error: "No board loaded" }
 

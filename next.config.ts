@@ -1,9 +1,7 @@
 import type { NextConfig } from "next"
 
-//  'unsafe-inline' and 'unsafe-eval' are required by Next's own runtime in
-//  development. Production drops 'unsafe-eval' but still needs 'unsafe-inline'
-//  for the framework's bootstrap script; tightening that further requires
-//  per-request nonces, which is a proxy-level change.
+// Next's runtime needs 'unsafe-eval' in development and 'unsafe-inline' for
+// its bootstrap script. Dropping the latter requires per-request nonces.
 const isDev = process.env.NODE_ENV === "development"
 
 const contentSecurityPolicy = [
@@ -37,8 +35,6 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
-  //  Drops the "X-Powered-By: Next.js" response header, which tells an attacker
-  //  which framework and therefore which CVEs to try.
   poweredByHeader: false,
   async headers() {
     return [

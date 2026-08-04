@@ -24,8 +24,6 @@ const db = client.db()
 
 export const auth = betterAuth({
   database: mongodbAdapter(db, { client }),
-  //  Rejects auth requests whose Origin header is not one of these, which is
-  //  what stops another site from driving sign-in against this backend.
   trustedOrigins: [env.BETTER_AUTH_URL],
   session: {
     cookieCache: {
@@ -36,14 +34,12 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
-    //  The sign-in form only sets minLength on the input, which any client can
-    //  ignore. This is the check that actually holds.
+    // The form's minLength is advisory; this is the enforced one.
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
   rateLimit: {
-    //  Defaults to production-only; enable everywhere so the limits are
-    //  exercised in development too.
+    // Better Auth enables this in production only by default.
     enabled: true,
     window: 60,
     max: 100,

@@ -1,8 +1,6 @@
 import { z } from "zod"
 
-//  Parsed once at import time so a misconfigured deployment fails immediately
-//  with a readable message, instead of throwing an obscure driver error on the
-//  first database query.
+// Parsed at import time so a bad deployment fails here, not on the first query.
 const envSchema = z.object({
   MONGODB_URI: z
     .string()
@@ -16,8 +14,7 @@ const envSchema = z.object({
     .string()
     .min(32, "BETTER_AUTH_SECRET must be at least 32 characters"),
   BETTER_AUTH_URL: z.url("BETTER_AUTH_URL must be a valid URL"),
-  //  Read by the browser through lib/auth/auth-client.ts. Validated here so a
-  //  missing value fails at startup rather than on the first sign-in attempt.
+  // Read by the browser via auth-client, checked here so it fails at startup.
   NEXT_PUBLIC_BETTER_AUTH_URL: z.url(
     "NEXT_PUBLIC_BETTER_AUTH_URL must be a valid URL",
   ),

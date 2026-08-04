@@ -4,7 +4,7 @@ import { MongoClient } from "mongodb"
 import { headers } from "next/headers"
 import { redirect } from "next/navigation"
 import { initializeUserBoard } from "../init-user-board"
-import { env } from "../env"
+import { env, isGoogleAuthEnabled } from "../env"
 
 // In dev, Next re-evaluates this module on every hot reload. Without caching,
 // each reload opens a new connection pool and never closes the old one, which
@@ -32,6 +32,24 @@ export const auth = betterAuth({
     },
   },
 
+  user: {
+    changeEmail: {
+      enabled: true,
+      // No mail provider is configured, so confirmation cannot be sent. Users
+      // are never verified here, which is the case this flag covers.
+      updateEmailWithoutVerification: true,
+    },
+  },
+  // Spread rather than an inline false: Better Auth reads the presence of the
+  // key, so an unconfigured provider must be absent, not disabled.
+  socialProviders: isGoogleAuthEnabled
+    ? {
+        google: {
+          clientId: env.GOOGLE_CLIENT_ID!,
+          clientSecret: env.GOOGLE_CLIENT_SECRET!,
+        },
+      }
+    : undefined,
   emailAndPassword: {
     enabled: true,
     // The form's minLength is advisory; this is the enforced one.

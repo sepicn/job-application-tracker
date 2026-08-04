@@ -1,18 +1,20 @@
 "use client"
 
-import { Briefcase } from "lucide-react"
+import { Briefcase, Settings } from "lucide-react"
 import Link from "next/link"
 import { Button } from "./ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { Avatar, AvatarFallback } from "./ui/avatar"
 import SignOutButton from "./sign-out-btn"
+import ThemeToggle from "./theme-toggle"
 import { useSession } from "@/lib/auth/auth-client"
 
 export default function Navbar() {
@@ -20,7 +22,7 @@ export default function Navbar() {
 
   return (
     <nav className="border-b bg-background">
-      <div className="container mx-auto flex h-16 items-center px-4 justify-between">
+      <div className="flex h-16 items-center justify-between px-6">
         <Link
           href="/"
           className="flex items-center space-x-2 gap-2 text-xl font-semibold text-primary"
@@ -49,7 +51,7 @@ export default function Navbar() {
                   }
                 >
                   <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-primary text-white">
+                    <AvatarFallback className="bg-primary text-primary-foreground">
                       {session.user.name[0].toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
@@ -67,6 +69,18 @@ export default function Navbar() {
                       </div>
                     </DropdownMenuLabel>
                   </DropdownMenuGroup>
+                  <DropdownMenuSeparator />
+                  <div className="px-2 py-1.5">
+                    <p className="mb-1.5 text-xs text-muted-foreground">
+                      Theme
+                    </p>
+                    <ThemeToggle compact />
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem render={<Link href="/settings" />}>
+                    <Settings className="mr-2 h-4 w-4" />
+                    Settings
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <SignOutButton />
                 </DropdownMenuContent>

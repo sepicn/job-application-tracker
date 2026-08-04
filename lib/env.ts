@@ -18,6 +18,9 @@ const envSchema = z.object({
   NEXT_PUBLIC_BETTER_AUTH_URL: z.url(
     "NEXT_PUBLIC_BETTER_AUTH_URL must be a valid URL",
   ),
+  // Optional: Google sign-in stays switched off until both are supplied.
+  GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+  GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
@@ -34,3 +37,7 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data
+
+export const isGoogleAuthEnabled = Boolean(
+  env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET,
+)

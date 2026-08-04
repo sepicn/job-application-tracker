@@ -2,7 +2,11 @@
 import { useState } from "react"
 import { Board, Column, JobAppication } from "../models/models.types"
 import { updateJobApplication } from "@/lib/actions/job-applications"
-import { deleteColumn as deleteColumnAction } from "@/lib/actions/columns"
+import {
+  createColumn as createColumnAction,
+  deleteColumn as deleteColumnAction,
+  renameColumn as renameColumnAction,
+} from "@/lib/actions/columns"
 
 //  Removes the job from whichever column holds it and re-inserts it into the
 //  target at `targetIndex`, renumbering that column so `order` stays in step
@@ -127,6 +131,60 @@ export function useBoard(initialBoard?: Board | null) {
     }
   }
 
+  //  Not optimistic: the column's _id is generated server-side and every child
+  //  keys off it, so there is nothing meaningful to render until it comes back.
+  async function createColumn(name: string) {
+    if (!board?._id) return { error: "No board loaded" }
+
+    setError(null)
+
+    try {
+      const result = await createColumnAction({ boardId: board._id, name })
+
+      if (result.error || !result.data) {
+        const message = result.error ?? "Failed to create column"
+        setError(message)
+        return { error: message }
+      }
+
+      const created: Column = { ...result.data, jobApplications: [] }
+
+      setColumns((prev) => [...prev, created])
+
+      return { success: true }
+    } catch (err) {
+      console.error("Error", err)
+      setError("Failed to create column")
+      return { error: "Failed to create column" }
+    }
+  }
+
+  async function renameColumn(columnId: string, name: string) {
+    const previousColumns = columns
+
+    setError(null)
+    setColumns((prev) =>
+      prev.map((col) => (col._id === columnId ? { ...col, name } : col)),
+    )
+
+    try {
+      const result = await renameColumnAction({ id: columnId, name })
+
+      if (result.error) {
+        setColumns(previousColumns)
+        setError(result.error)
+        return { error: result.error }
+      }
+
+      return { success: true }
+    } catch (err) {
+      console.error("Error", err)
+      setColumns(previousColumns)
+      setError("Failed to rename column")
+      return { error: "Failed to rename column" }
+    }
+  }
+
   async function deleteColumn(columnId: string) {
     const previousColumns = columns
 
@@ -158,6 +216,8 @@ export function useBoard(initialBoard?: Board | null) {
     moveJob,
     previewMoveJob,
     restoreColumns,
+    createColumn,
+    renameColumn,
     deleteColumn,
   }
 }

@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Mic,
   MoreVertical,
+  Pencil,
   Trash2,
   XCircle,
 } from "lucide-react"
@@ -27,6 +28,9 @@ import {
 } from "./ui/dialog"
 import { Button } from "./ui/button"
 import CreateJobApplicationDialog from "./create-job-application-dialog"
+import CreateColumnDialog from "./create-column-dialog"
+import { Label } from "./ui/label"
+import { Input } from "./ui/input"
 import JobApplicationCard from "./job-application-card"
 import { useBoard } from "@/lib/hooks/useBoards"
 import {
@@ -88,6 +92,7 @@ function DroppableColumn({
   sortedColumns,
   canDelete,
   onDelete,
+  onRename,
 }: {
   column: Column
   config: ColConfig
@@ -95,9 +100,17 @@ function DroppableColumn({
   sortedColumns: Column[]
   canDelete: boolean
   onDelete: (columnId: string) => Promise<{ error?: string } | undefined>
+  onRename: (
+    columnId: string,
+    name: string,
+  ) => Promise<{ error?: string } | undefined>
 }) {
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isRenaming, setIsRenaming] = useState(false)
+  const [renameValue, setRenameValue] = useState(column.name)
+  const [renameError, setRenameError] = useState("")
+  const [isSavingName, setIsSavingName] = useState(false)
 
   const { setNodeRef, isOver } = useDroppable({
     id: column._id,
@@ -112,6 +125,33 @@ function DroppableColumn({
   const sortedJobs = [...(column.jobApplications ?? [])].sort(
     (a, b) => a.order - b.order,
   )
+
+  function openRename() {
+    //  Seed from the current name each time, so a cancelled edit is discarded.
+    setRenameValue(column.name)
+    setRenameError("")
+    setIsRenaming(true)
+  }
+
+  async function handleRename(e: React.FormEvent) {
+    e.preventDefault()
+
+    setRenameError("")
+    setIsSavingName(true)
+
+    try {
+      const result = await onRename(column._id, renameValue)
+
+      if (result?.error) {
+        setRenameError(result.error)
+        return
+      }
+
+      setIsRenaming(false)
+    } finally {
+      setIsSavingName(false)
+    }
+  }
 
   async function handleDelete() {
     setIsDeleting(true)
@@ -153,6 +193,10 @@ function DroppableColumn({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={openRename}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Rename Column
+                </DropdownMenuItem>
                 <DropdownMenuItem
                   className="text-destructive"
                   disabled={!canDelete}
@@ -190,6 +234,51 @@ function DroppableColumn({
           <CreateJobApplicationDialog columnId={column._id} boardId={boardId} />
         </CardContent>
       </Card>
+
+      <Dialog open={isRenaming} onOpenChange={setIsRenaming}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Column</DialogTitle>
+            <DialogDescription>
+              Jobs in this column are not affected.
+            </DialogDescription>
+          </DialogHeader>
+          <form className="space-y-4" onSubmit={handleRename}>
+            {renameError && (
+              <div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">
+                {renameError}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor={`rename-${column._id}`}>Name *</Label>
+              <Input
+                id={`rename-${column._id}`}
+                required
+                maxLength={50}
+                autoFocus
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSavingName}
+                onClick={() => setIsRenaming(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSavingName || !renameValue.trim()}
+              >
+                {isSavingName ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isConfirmingDelete} onOpenChange={setIsConfirmingDelete}>
         <DialogContent>
@@ -277,8 +366,15 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
   const dragSnapshot = useRef<Column[] | null>(null)
 
-  const { columns, moveJob, previewMoveJob, restoreColumns, deleteColumn } =
-    useBoard(board)
+  const {
+    columns,
+    moveJob,
+    previewMoveJob,
+    restoreColumns,
+    createColumn,
+    renameColumn,
+    deleteColumn,
+  } = useBoard(board)
 
   //  Same reason as in DroppableColumn: sorting `columns` in place mutates the
   //  array held in useBoard state.
@@ -423,9 +519,11 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
                 sortedColumns={sortedColumns}
                 canDelete={columns.length > 1}
                 onDelete={deleteColumn}
+                onRename={renameColumn}
               />
             )
           })}
+          <CreateColumnDialog onCreate={createColumn} />
         </div>
       </div>
       <DragOverlay>

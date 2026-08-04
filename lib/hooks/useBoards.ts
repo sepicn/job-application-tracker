@@ -58,6 +58,10 @@ export function withJobMoved(
   return next
 }
 
+//  Every mutation reports the same way, so callers can check `error` without
+//  narrowing a union per call site.
+export type BoardActionResult = { error?: string; success?: boolean }
+
 export function useBoard(initialBoard?: Board | null) {
   const [board, setBoard] = useState<Board | null>(initialBoard || null)
   const [columns, setColumns] = useState<Column[]>(initialBoard?.columns || [])
@@ -100,7 +104,7 @@ export function useBoard(initialBoard?: Board | null) {
     //  During a drag, `columns` already holds the preview, so the caller passes
     //  the pre-drag snapshot to roll back to instead.
     rollbackTo?: Column[],
-  ) {
+  ): Promise<BoardActionResult> {
     const previousColumns = rollbackTo ?? columns
 
     setError(null)
@@ -133,7 +137,7 @@ export function useBoard(initialBoard?: Board | null) {
 
   //  Not optimistic: the column's _id is generated server-side and every child
   //  keys off it, so there is nothing meaningful to render until it comes back.
-  async function createColumn(name: string) {
+  async function createColumn(name: string): Promise<BoardActionResult> {
     if (!board?._id) return { error: "No board loaded" }
 
     setError(null)
@@ -159,7 +163,10 @@ export function useBoard(initialBoard?: Board | null) {
     }
   }
 
-  async function renameColumn(columnId: string, name: string) {
+  async function renameColumn(
+    columnId: string,
+    name: string,
+  ): Promise<BoardActionResult> {
     const previousColumns = columns
 
     setError(null)
@@ -185,7 +192,7 @@ export function useBoard(initialBoard?: Board | null) {
     }
   }
 
-  async function deleteColumn(columnId: string) {
+  async function deleteColumn(columnId: string): Promise<BoardActionResult> {
     const previousColumns = columns
 
     setError(null)

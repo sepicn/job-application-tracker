@@ -25,6 +25,7 @@ import { Label } from "./ui/label"
 import { Input } from "./ui/input"
 import { Textarea } from "./ui/textarea"
 import React, { useState } from "react"
+import { toast } from "sonner"
 
 interface JobAppicationCardProps {
   job: JobAppication
@@ -62,11 +63,18 @@ export default function JobApplicationCard({
           .filter((tag) => tag.length > 0),
       })
 
-      if (!result.error) {
-        setIsEditing(false)
+      if (result.error) {
+        toast.error("Could not save your changes", {
+          description: result.error,
+        })
+        return
       }
+
+      setIsEditing(false)
+      toast.success("Application updated")
     } catch (err) {
       console.error("Failed to edit job application", err)
+      toast.error("Could not save your changes")
     }
   }
 
@@ -75,10 +83,16 @@ export default function JobApplicationCard({
       const result = await deleteJobApplication(job._id)
 
       if (result.error) {
-        console.error("Failed to delete job application: ", result.error)
+        toast.error("Could not delete the application", {
+          description: result.error,
+        })
+        return
       }
+
+      toast.success(`Deleted ${job.position}`)
     } catch (err) {
       console.error("Failed to delete job application", err)
+      toast.error("Could not delete the application")
     }
   }
 
@@ -89,10 +103,13 @@ export default function JobApplicationCard({
       })
 
       if (result.error) {
-        console.error("Failed to move job application: ", result.error)
+        toast.error("Could not move the application", {
+          description: result.error,
+        })
       }
     } catch (err) {
       console.error("Failed to move job application", err)
+      toast.error("Could not move the application")
     }
   }
 

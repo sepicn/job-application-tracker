@@ -52,6 +52,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useRef, useState } from "react"
+import { toast } from "sonner"
 
 interface KanbanBoardProps {
   board: Board
@@ -159,11 +160,14 @@ function DroppableColumn({
       const result = await onDelete(column._id)
 
       if (result?.error) {
-        console.error("Failed to delete column: ", result.error)
+        toast.error("Could not delete the column", {
+          description: result.error,
+        })
         return
       }
 
       setIsConfirmingDelete(false)
+      toast.success(`Deleted ${column.name}`)
     } finally {
       setIsDeleting(false)
     }
@@ -487,7 +491,20 @@ export default function KanbanBoard({ board }: KanbanBoardProps) {
       return
     }
 
-    await moveJob(activeJobId, column._id, newIndex, snapshot ?? undefined)
+    const result = await moveJob(
+      activeJobId,
+      column._id,
+      newIndex,
+      snapshot ?? undefined,
+    )
+
+    //  The card has already snapped back at this point, which on its own looks
+    //  like the drag simply did not take.
+    if (result.error) {
+      toast.error("Could not move the application", {
+        description: result.error,
+      })
+    }
   }
 
   const activeJob = sortedColumns
